@@ -20,11 +20,12 @@ var container;
 var camera, scene, renderer;
 var uniforms;
 
+var training = true;
 
 function setup() {
 //  console.log(yIntercept);
-  var canvas = createCanvas(500, 500);
-  canvas.parent("container");
+  var canvas = createCanvas(500 , windowHeight- 20);
+  canvas.parent("p5container");
   //createCanvas(500, 500);
 
   container = document.getElementById( 'container' );
@@ -96,16 +97,41 @@ function setup() {
 var timer = 0;
 
 function draw() {
-  timer += 5;
 
+  background(255, 0, 0, 0);
+
+
+  timer += 5;
   uniforms.time.value = timer / 1000;
 	renderer.render( scene, camera );
 
-  fill(255, 0, 0);
-  ellipse(width/2, height/2, 500);
+
 }
 
+function centerCanvas() {
+  let x = (windowWidth - width) / 2;
+  let y = (windowHeight - height) / 2;
+  canvas.position(x, y);
+}
 
 function onWindowResize( event ) {
 				renderer.setSize( window.innerWidth, window.innerHeight );
+}
+
+
+function keyPressed(){
+  if(key == ' '){
+    training = !training;
+  }
+
+  if(key == '1'){
+    noCanvas();
+  }
+
+  if(key == '2'){
+    var canvas = createCanvas(windowWidth / 4, windowHeight);
+    canvas.parent("container");
+    fill(255, 0, 0);
+    ellipse(width/2, height/2, 100);
+  }
 }
