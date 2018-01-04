@@ -23,10 +23,11 @@ var uniforms;
 
 function setup() {
 //  console.log(yIntercept);
-  createCanvas(500, 500);
+  var canvas = createCanvas(500, 500);
+  canvas.parent("container");
+  //createCanvas(500, 500);
 
   container = document.getElementById( 'container' );
-  console.log("after");
   camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
 	scene = new THREE.Scene();
 	var geometry = new THREE.PlaneBufferGeometry( 2, 2 );
@@ -92,8 +93,16 @@ function setup() {
 
 }
 
+var timer = 0;
+
 function draw() {
-  ellipse(width/2, height/2, 50);
+  timer += 5;
+
+  uniforms.time.value = timer / 1000;
+	renderer.render( scene, camera );
+
+  fill(255, 0, 0);
+  ellipse(width/2, height/2, 500);
 }
 
 
