@@ -80,7 +80,7 @@ function makeDatasets(){
     for(let y = 0; y < resizedY; y++){
       let loc = (x + y * resizedX)*4;
       if(resized1.pixels[loc] < threshold){
-        dataset1.push([x/resizedX, 1-y/resizedY]);
+        dataset1.push([x/resizedX, y/resizedY]);
       }
     }
   }
@@ -92,7 +92,7 @@ function makeDatasets(){
     for(let y = 0; y < resizedY; y++){
       let loc = (x + y * resizedX)*4;
       if(resized2.pixels[loc] < threshold){
-        dataset2.push([x/resizedX, 1-y/resizedY]);
+        dataset2.push([x/resizedX, y/resizedY]);
       }
     }
   }
@@ -102,32 +102,78 @@ function makeDatasets(){
     for(let y = 0; y < resizedY; y++){
       let loc = (x + y * resizedX)*4;
       if(resized3.pixels[loc] < threshold){
-        dataset3.push([x/resizedX, 1-y/resizedY]);
+        dataset3.push([x/resizedX, y/resizedY]);
       }
     }
   }
 }
 //--------------------------------------------------------------
 function makeModels(){
-  model1 = regression.polynomial(dataset1, {order: modelOrder});
-  model2 = regression.polynomial(dataset2, {order: modelOrder});
-  model3 = regression.polynomial(dataset3, {order: modelOrder});
+  model1 = regression.polynomial(dataset1, {order: polyDegree});
+  model2 = regression.polynomial(dataset2, {order: polyDegree});
+  model3 = regression.polynomial(dataset3, {order: polyDegree});
 }
 //--------------------------------------------------------------
 function showShader(){
   noCanvas();
-  isReady = true;
+
+  stage = 2;
 }
 
+function drawPolynomials(){
+  let numPoints = 200;
+  for(let i = 0; i < numPoints; i++){
+    let m1 = model1.predict(i/numPoints);
+    let m2 = model2.predict(i/numPoints);
+    let m3 = model3.predict(i/numPoints);
+    fill(255, 0, 0);
+    ellipse(width*m1[0], height*m1[1], 5, 5);
+
+    fill(0, 255, 0);
+    ellipse(width*m2[0], height*m2[1], 5, 5);
+
+    fill(0, 0, 255);
+    ellipse(width*m3[0], height*m3[1], 5, 5);
+  }
+}
+
+function drawPolynomial(poly){
+  let numPoints = 200;
+
+  for(let i = 0; i < numPoints; i++){
+    let x = i/numPoints;
+    let y = 0;
+    for(let d = 0; d < poly.length; d++){
+      y += poly[d]*Math.pow(x, poly.length-d-1);
+    }
+
+    fill(255, 100, 100);
+    ellipse(width*i/numPoints, height*y, 8, 8);
+  }
+
+}
+
+function lerpPolynomials(poly1, poly2, pct){
+  var newPoly = [];
+  for(let i = 0; i < polyDegree+1; i++){
+    newPoly.push(lerp(poly1[i], poly2[i], pct));
+  }
+
+  return newPoly;
+}
 //--------------------------------------------------------------
 function drawImages(){
-  image(image1, 0, 0, width/3);
-  image(image2, width/3, 0, width/3);
-  image(image3, 2*width/3, 0, width/3);
+  image(image1, 0, 0, width/3, 400);
+  image(image2, width/3, 0, width/3, 400);
+  image(image3, 2*width/3, 0, width/3, 400);
 }
 
 //--------------------------------------------------------------
 function initUI(){
+  degreeSlider = createSlider(2, 20, 7, 1);
+  degreeSlider.position(10, 100);
+  degreeSlider.style('width', '80px');
+
   slider1 = createSlider(0, 1, 0.5, 0.001);
   slider1.position(10, 10);
   slider1.style('width', '80px');
@@ -170,7 +216,7 @@ function setupCanvas(){
   uniforms = {
 					time: { value: 1.0 },
           resolution: {type: "v2",
-                       value: new THREE.Vector2(window.innerWidth, window.innerHeight)},
+                       value: new THREE.Vector2(1920, 1080)},
           coeffs: {type: "fv1",
                    value: u_coeffs}
 	};

@@ -39,12 +39,12 @@
 
 		<script id="fragmentShader" type="x-shader/x-fragment">
 			varying vec2 vUv;
-      //uniform vec2 resolution;
+      uniform vec2 resolution;
 			uniform float time;
       uniform float coeffs[8];
 
-      //uniform
-      vec2 resolution = vec2(1920, 1080);
+      const float PI = 3.14159265359;
+      const float TWO_PI = 6.28318530718;
 
       const float maxDistance = 4.0;
 
@@ -53,7 +53,21 @@
       }
 
       float map(vec3 p){
-          return sphere(p, 1.0);
+          float x = atan(p.y, p.x);
+          x = 1.0 - (x / TWO_PI); //normalize between 0 and 1
+
+          float freq = 2.0;//+ (3.0*mod(time, 5.0) / 5.0);
+          x = fract(x * freq);
+          //x = fract(2.0*x);
+          //float polyOut = (coeffs[3])*pow(x, 3.0) + coeffs[2]*pow(x, 2.0) + coeffs[1]*x + coeffs[0];
+
+          float polyOut = (coeffs[7]*pow(x, 7.0) + coeffs[6]*pow(x, 6.0) + coeffs[5]*pow(x, 5.0) + coeffs[4]*pow(x, 4.0) + coeffs[3]*pow(x, 3.0) + coeffs[2]*pow(x, 2.0) + coeffs[1]*x + coeffs[0]);
+
+          //float polyOut = 10.0*sin(time) * (coeffs[7]*pow(x, 7.0) + coeffs[6]*pow(x, 6.0) + coeffs[5]*pow(x, 5.0) + coeffs[4]*pow(x, 4.0) + coeffs[3]*pow(x, 3.0) + coeffs[2]*pow(x, 2.0) + coeffs[1]*x + coeffs[0]);
+          //float s = cos(x*2.0 * TWO_PI);
+          float r = 0.5;
+          r += 0.6*clamp(polyOut, -0.5, 1.5);
+          return sphere(p, r);
       }
 
       float march(vec3 rayOrigin, vec3 rayDirection){
@@ -91,10 +105,11 @@
           // vec3 backgroundColor = vec3(1.0, 0.3, 0.4);
           vec3 backgroundColor = vec3(0.0);
 
+
           float x = q.x;
 
-          float polyOut = 10.0*sin(time) * (coeffs[7]*pow(x, 7.0) + coeffs[6]*pow(x, 6.0) + coeffs[5]*pow(x, 5.0) + coeffs[4]*pow(x, 4.0) + coeffs[3]*pow(x, 3.0) + coeffs[2]*pow(x, 2.0) + coeffs[1]*x + coeffs[0]);
-          backgroundColor += polyOut;
+          //float polyOut = 10.0*sin(time) * (coeffs[7]*pow(x, 7.0) + coeffs[6]*pow(x, 6.0) + coeffs[5]*pow(x, 5.0) + coeffs[4]*pow(x, 4.0) + coeffs[3]*pow(x, 3.0) + coeffs[2]*pow(x, 2.0) + coeffs[1]*x + coeffs[0]);
+          // backgroundColor += 0.3*polyOut;
           float distanceUntilHit = march(rayOrigin, rayDirection);
 
           vec3 col = backgroundColor;
