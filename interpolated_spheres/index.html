@@ -6,6 +6,7 @@
     <script src = "libs/p5.min.js"></script>
     <script src = "libs/p5.dom.min.js"></script>
     <script src = "libs/three.min.js"></script>
+    <!-- Regression-js library by Tom Alexander, https://github.com/Tom-Alexander/regression-js -->
     <script src = "libs/regression.min.js"></script>
     <script src = "interpolated_spheres.js"></script>
     <script src = "util.js"></script>
@@ -41,7 +42,7 @@
 		</script>
 
 
-
+    <!-- Fragment Shader -->
     <!-------------------------------------------------------------------------->
 		<script id="fragmentShader" type="x-shader/x-fragment">
 			varying vec2 vUv;
@@ -57,7 +58,7 @@
       const float TWO_PI = 6.28318530718;
       const float maxDistance = 4.0;
 
-      //Noise functions taken from https://gist.github.com/patriciogonzalezvivo/670c22f3966e662d2f83
+      //Noise functions by Patricio Gonzalez Vivo, https://gist.github.com/patriciogonzalezvivo/670c22f3966e662d2f83
       float rand(vec2 n) {
       	return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453);
       }
@@ -74,7 +75,7 @@
       }
 
       //2D Fractional Brownian Motion, or fractal noise,
-      //that stacks 4 octaves of noise in geometrically decreasing amplitudes
+      //that sums 4 octaves of noise in geometrically decreasing amplitudes
       //Inigo Quilez
       float fbm(vec2 p){
         float f = 0.0;

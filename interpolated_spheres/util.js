@@ -74,6 +74,7 @@ function animation(){
 }
 
 //Trains three models based on the datasets
+//Regression-js library by Tom Alexander, https://github.com/Tom-Alexander/regression-js
 //--------------------------------------------------------------
 function makeModels(){
   model1 = regression.polynomial(dataset1, {order: polyDegree});
@@ -246,7 +247,7 @@ function initUI(){
   button3.mousePressed(filterImg3);
 
   //Instructions
-  var t = "1) Filter the images until there are no artifacts, \n2) Press Space once to see the models, \n3) Press Space again to see the shader \n4) Place 3 other images in the data folder (named image1.jpg, image2.jpg etc.) and refresh the page!";
+  var t = "1) Filter the images until there are no artifacts - markers work the best!, \n2) Press Space once to see the models, \n3) Press Space again to see the shader \n4) Place 3 other images in the data folder (named image1.jpg, image2.jpg etc.) and refresh the page!";
   textSize(20);
   text(t, 10, 30);
 }
