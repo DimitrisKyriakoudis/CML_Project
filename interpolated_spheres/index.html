@@ -1,12 +1,15 @@
+<!-- Includes all libraries and the (default) vertex and (main) fragment shaders (see below) -->
+
 <!DOCTYPE html>
 <html>
   <head>
-    <script src="libs/p5.min.js"></script>
-    <script src="libs/p5.dom.min.js"></script>
-    <script src="libs/three.min.js"></script>
-    <script src="libs/regression.min.js"></script>
-    <script src="interpolated_spheres.js"></script>
-    <script src="util.js"></script>
+    <script src = "libs/p5.min.js"></script>
+    <script src = "libs/p5.dom.min.js"></script>
+    <script src = "libs/three.min.js"></script>
+    <script src = "libs/regression.min.js"></script>
+    <script src = "interpolated_spheres.js"></script>
+    <script src = "util.js"></script>
+
 
     <style>
     			body {
@@ -37,89 +40,190 @@
 			}
 		</script>
 
+
+
+    <!-------------------------------------------------------------------------->
 		<script id="fragmentShader" type="x-shader/x-fragment">
 			varying vec2 vUv;
       uniform vec2 resolution;
 			uniform float time;
-      uniform float coeffs[8];
+      //The coefficients passed as an array from the CPU, maximum size 16
+      //but can be shorter
+      uniform float u_coefficients[16];
 
+      //Useful constants
+      const int DEGREE = 7;
       const float PI = 3.14159265359;
       const float TWO_PI = 6.28318530718;
-
       const float maxDistance = 4.0;
 
+      //Noise functions taken from https://gist.github.com/patriciogonzalezvivo/670c22f3966e662d2f83
+      float rand(vec2 n) {
+      	return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453);
+      }
+
+      float noise(vec2 p){
+      	vec2 ip = floor(p);
+      	vec2 u = fract(p);
+      	u = u*u*(3.0-2.0*u);
+
+      	float res = mix(
+      		mix(rand(ip),rand(ip+vec2(1.0,0.0)),u.x),
+      		mix(rand(ip+vec2(0.0,1.0)),rand(ip+vec2(1.0,1.0)),u.x),u.y);
+      	return res*res;
+      }
+
+      //2D Fractional Brownian Motion, or fractal noise,
+      //that stacks 4 octaves of noise in geometrically decreasing amplitudes
+      //Inigo Quilez
+      float fbm(vec2 p){
+        float f = 0.0;
+        f += 0.5000*noise(p); p *= 2.01;
+        f += 0.2500*noise(p); p *= 2.02;
+        f += 0.1250*noise(p); p  *= 2.03;
+        f += 0.0625*noise(p);
+        f /= 0.9375;
+        return f;
+      }
+
+      //Runs the polynomial on the input
+      float calcPoly(float x){
+        float polyOut = 0.;
+        for(int i = 0; i < DEGREE + 1; i++){
+          float exp = float(DEGREE) - float(i);
+          polyOut += u_coefficients[i] * pow(abs(x), exp);
+        }
+        return polyOut;
+      }
+
+      //Simple Signed Distance Function for a sphere centered around the origin,
+      //returns the distance of any given 3D point from
+      //the sphere's surface; positive is outside, negative is
+      //inside, and 0 is on the surface.
       float sphere(vec3 p, float r){
           return length(p)-r;
       }
 
+      //This defines the scene (in this case the sphere that gets deformed),
+      //it returns the shortest distance between any given point in 3D
+      //space and the closest object in the scene
       float map(vec3 p){
+          //Normalizing the domain around the sphere
           float x = atan(p.y, p.x);
           x = 1.0 - (x / TWO_PI); //normalize between 0 and 1
+          //By taking the fractional component of the scaled domain
+          //It effectively repeats going from 0 to 1 three times around the sphere
+          float freq = 3.0;
+          x = fract(x * freq + time*0.04);
 
-          float freq = 2.0;//+ (3.0*mod(time, 5.0) / 5.0);
-          x = fract(x * freq);
-          //x = fract(2.0*x);
-          //float polyOut = (coeffs[3])*pow(x, 3.0) + coeffs[2]*pow(x, 2.0) + coeffs[1]*x + coeffs[0];
+          //Calculatinu the polynomial's value for each point along the phase
+          float poly = calcPoly(x);
+          //Scaling the polynomial to be bipolar
+          poly = clamp(2.0*poly - 1.0, -1.0, 1.0);
 
-          float polyOut = (coeffs[7]*pow(x, 7.0) + coeffs[6]*pow(x, 6.0) + coeffs[5]*pow(x, 5.0) + coeffs[4]*pow(x, 4.0) + coeffs[3]*pow(x, 3.0) + coeffs[2]*pow(x, 2.0) + coeffs[1]*x + coeffs[0]);
+          //The sphere's base radius
+          float r = 0.6;
+          //Applying the deformation as a ratio of
+          //the radius
+          r += r*0.88*poly;
 
-          //float polyOut = 10.0*sin(time) * (coeffs[7]*pow(x, 7.0) + coeffs[6]*pow(x, 6.0) + coeffs[5]*pow(x, 5.0) + coeffs[4]*pow(x, 4.0) + coeffs[3]*pow(x, 3.0) + coeffs[2]*pow(x, 2.0) + coeffs[1]*x + coeffs[0]);
-          //float s = cos(x*2.0 * TWO_PI);
-          float r = 0.5;
-          r += 0.6*clamp(polyOut, -0.5, 1.5);
           return sphere(p, r);
       }
 
+      //Ray march rendering function, traverses on a line starting
+      //from the ray origin (i.e. camera position) and going along the
+      //ray's direction until it either hits an object or shoots of in the background.
+      //Was submitted as part of my Advanced Audiovisual Processing portfolio
       float march(vec3 rayOrigin, vec3 rayDirection){
           float stopThresh = 0.05;
-
           float endThresh = maxDistance;
-
           float currDistToObject = 0.0;
           float distTravelledSoFar = 0.0;
+
           for(int i = 0; i < 64; i++){
               currDistToObject = map(rayOrigin + distTravelledSoFar*rayDirection);
 
               if(currDistToObject < stopThresh || distTravelledSoFar >= endThresh)
                   return distTravelledSoFar;
-
-              distTravelledSoFar += currDistToObject * 0.1;
+              //Had to increase the step to 0.9 (from 0.5) to get a higher resolution of the surface's deformation
+              distTravelledSoFar += currDistToObject * 0.9 ;
           }
           return distTravelledSoFar;
       }
 
-
+      //Takes a point on the object's surface and returns its color
       vec3 objectColor(vec3 p){
-          return vec3(0.5+0.5*sin(p.x*30.0), 0.2, 0.7);
+          //Normalizing the domain around the sphere
+          float x = atan(p.y, p.x);
+          x = 1.0 - (x / TWO_PI);
+          x = fract(x + time*0.04);
+
+          //Polynomial around the sphere
+          float poly = calcPoly(x);
+          poly = clamp(2.0*poly - 1.0, -1.0, 1.0);
+
+          //Mixing between the blue and yellow color by using 2D noise on the surface
+          vec3 color1 = vec3(0.01, 0.398, 0.96);
+          vec3 color2 = vec3(1.0, 1.0, 0.0);
+          //Some domain warping that feeds back the distortion of the domain
+          vec3 col = mix(color1, color2, pow(poly * fbm(vec2(1.263, 8.932) + p.xy*50.*fbm(p.yx*5.0*fbm(vec2(2.52, 4.98)+p.xy*2.0 + poly*0.9))), 0.6));
+          return col;
       }
 
       void main(){
-
+          //WORLD COORDINATES SETUP//
           vec2 q = gl_FragCoord.xy/resolution.xy;
+          //Normalizing coordinates to be between -1.0 and 1.0
           vec2 p = 2.0*q - 1.0;
+          //fixing aspect ratio
           p.x *= resolution.x/resolution.y;
+          //Adjusting size and position
+          p *= 0.65;
+          p.y += 0.1;
 
-          vec3 rayOrigin = vec3(0.0, 0.0, -3.0);
+          //RAY SETUP//
+          vec3 rayOrigin = vec3(0.0, 0.0, -2.0);
           vec3 rayDirection = vec3(p, 1.0);
-
-          // vec3 backgroundColor = vec3(1.0, 0.3, 0.4);
           vec3 backgroundColor = vec3(0.0);
-
-
-          float x = q.x;
-
-          //float polyOut = 10.0*sin(time) * (coeffs[7]*pow(x, 7.0) + coeffs[6]*pow(x, 6.0) + coeffs[5]*pow(x, 5.0) + coeffs[4]*pow(x, 4.0) + coeffs[3]*pow(x, 3.0) + coeffs[2]*pow(x, 2.0) + coeffs[1]*x + coeffs[0]);
-          // backgroundColor += 0.3*polyOut;
-          float distanceUntilHit = march(rayOrigin, rayDirection);
-
+          //Adding a gradient to the background
+          backgroundColor += 0.15*pow(1.0-q.y, 3.0);
+          //Setting background color as the default color
           vec3 col = backgroundColor;
 
+          //Performing the ray marching for the current ray,
+          //returns how far it had to travel to hit an object
+          float distanceUntilHit = march(rayOrigin, rayDirection);
+
+          //If the loop did not end by reaching the maximum distance,
+          //then we've hit an object in the scene
           if(distanceUntilHit < maxDistance){
+            //Calculate he coordinates of the point of the surface we've hit
             vec3 surfacePos = rayOrigin + distanceUntilHit * rayDirection;
+            //Calculate what color that point should have
             col = objectColor(surfacePos);
+
+            //SHADING//
+            //Approximating the normal of the current point of the surface
+            //by sampling whe scene on all sides with a small offset
+            //Adapted from deleted user's Reddit post:
+            //https://www.reddit.com/r/twotriangles/comments/1hy5qy/tutorial_1_writing_a_simple_distance_field/
+            vec2 eps = vec2(0.0, 0.0001);
+            vec3 normal = normalize(vec3(
+                map(surfacePos + eps.yxx) - map(surfacePos - eps.yxx),
+                map(surfacePos + eps.xyx) - map(surfacePos - eps.xyx),
+                map(surfacePos + eps.xxy) - map(surfacePos - eps.xxy))
+            );
+
+            float diffuse = max(0.0, dot(-rayDirection, normal));
+            float specular = pow(diffuse, 32.0);
+            //Applying the shading to the object's colour and giving it a small boost
+            col = col * vec3(diffuse + specular)*1.9;
+            //Tried to smoothly interpolate between the object and background colors but not quite working yet
+            //col = mix(col, backgroundColor, smoothstep(.05, 0.1, distanceUntilHit);
           }
 
-          gl_FragColor = vec4(col, 1);
+          //Capping the final color to 1.0 and sending it off to be rasterized
+          gl_FragColor = vec4(min(vec3(1.0), col), 1);
       }
 		</script>
 
